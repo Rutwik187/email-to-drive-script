@@ -1,0 +1,5 @@
+# Ignore sensitive credential files
+credentials.json
+token.json
+/credentials.json
+/token.json
