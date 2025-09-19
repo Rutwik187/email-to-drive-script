@@ -1,5 +1,5 @@
+# Ignore Gmail attachments folder
+gmail_attachments/
 # Ignore sensitive credential files
 credentials.json
 token.json
-/credentials.json
-/token.json
