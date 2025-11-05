@@ -175,10 +175,11 @@ class GmailAttachmentDownloader:
             return False
 
     def process_message_parts(
-        self, 
-        parts: List[Dict[str, Any]], 
-        message_id: str, 
-        message_info: Dict[str, Any]
+        self,
+        parts: List[Dict[str, Any]],
+        message_id: str,
+        message_info: Dict[str, Any],
+        logger=None
     ) -> List[Dict[str, Any]]:
         """Find and upload .pdf/.docx attachments to Drive root."""
         attachments_info = []
@@ -208,10 +209,12 @@ class GmailAttachmentDownloader:
                         'destination': "Google Drive" if success else None
                     }
                     attachments_info.append(attachment_info)
+                    if logger:
+                        logger(message_info, attachment_info)
 
             if 'parts' in part:
                 attachments_info.extend(self.process_message_parts(
-                    part['parts'], message_id, message_info
+                    part['parts'], message_id, message_info, logger
                 ))
         return attachments_info
 
@@ -220,7 +223,8 @@ class GmailAttachmentDownloader:
         start_date: str,
         end_date: str,
         additional_query: str = "",
-        save_log: bool = True
+        save_log: bool = True,
+        real_time_log: bool = True
     ) -> Dict[str, Any]:
         """
         Download .pdf/.docx from Gmail within specified date range and upload to Google Drive.
@@ -249,6 +253,9 @@ class GmailAttachmentDownloader:
             successful_uploads = 0
             failed_uploads = 0
 
+            def real_time_logger(message_info, attachment_info):
+                print(f"[LOG] Uploaded: {attachment_info['filename']} | Status: {'Success' if attachment_info['uploaded'] else 'Failed'} | From: {message_info['from']} | Subject: {message_info['subject']}")
+
             for i, message in enumerate(messages, 1):
                 print(f"\nProcessing message {i}/{len(messages)}: {message['id']}")
                 message_details = self.get_message_details(message['id'])
@@ -263,7 +270,8 @@ class GmailAttachmentDownloader:
                 parts = payload.get('parts', [])
                 if parts:
                     attachments = self.process_message_parts(
-                        parts, message['id'], message_info
+                        parts, message['id'], message_info,
+                        logger=real_time_logger if real_time_log else None
                     )
                     total_attachments += len(attachments)
                     successful_uploads += sum(1 for a in attachments if a['uploaded'])
@@ -304,30 +312,42 @@ class GmailAttachmentDownloader:
 
 def main():
     """Example usage of Gmail Attachment Downloader."""
+    import argparse
     try:
+        parser = argparse.ArgumentParser(description="Gmail Attachment Downloader")
+        parser.add_argument("-y", "--yes", action="store_true", help="Run with default settings (yesterday to today, no prompts)")
+        parser.add_argument("--from-date", type=str, help="Start date (YYYY-MM-DD)")
+        parser.add_argument("--to-date", type=str, help="End date (YYYY-MM-DD)")
+        parser.add_argument("--query", type=str, default="", help="Additional Gmail search filters")
+        args = parser.parse_args()
+
         downloader = GmailAttachmentDownloader()
-        end_date = datetime.now()
-        start_date = end_date - timedelta(days=30)
-        start_date_str = start_date.strftime('%Y-%m-%d')
-        end_date_str = end_date.strftime('%Y-%m-%d')
-        print("Gmail Attachment Downloader (uploads to Drive)")
-        print("=" * 40)
-        print(f"Default date range: {start_date_str} to {end_date_str}\n")
+        today = datetime.now()
+        yesterday = today - timedelta(days=1)
+        start_date_str = yesterday.strftime('%Y-%m-%d')
+        end_date_str = today.strftime('%Y-%m-%d')
 
-        custom_start = input(f"Enter start date (YYYY-MM-DD) or press Enter for {start_date_str}: ").strip()
-        custom_end = input(f"Enter end date (YYYY-MM-DD) or press Enter for {end_date_str}: ").strip()
-        if custom_start:
-            start_date_str = custom_start
-        if custom_end:
-            end_date_str = custom_end
+        if args.yes:
+            # Run with default settings, no prompts
+            additional_query = args.query
+        else:
+            print("Gmail Attachment Downloader (uploads to Drive)")
+            print("=" * 40)
+            print(f"Default date range: {start_date_str} to {end_date_str}\n")
+            custom_start = input(f"Enter start date (YYYY-MM-DD) or press Enter for {start_date_str}: ").strip()
+            custom_end = input(f"Enter end date (YYYY-MM-DD) or press Enter for {end_date_str}: ").strip()
+            if custom_start:
+                start_date_str = custom_start
+            if custom_end:
+                end_date_str = custom_end
+            additional_query = input("Enter additional Gmail search filters (optional): ").strip()
 
-        additional_query = input("Enter additional Gmail search filters (optional): ").strip()
         print(f"\nStarting upload from {start_date_str} to {end_date_str}...\n")
-
         summary = downloader.download_attachments_in_date_range(
             start_date=start_date_str,
             end_date=end_date_str,
-            additional_query=additional_query
+            additional_query=additional_query,
+            real_time_log=True if args.yes else False
         )
         print("\nUpload completed!")
 
