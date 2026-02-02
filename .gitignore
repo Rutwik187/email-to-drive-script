@@ -3,3 +3,4 @@ gmail_attachments/
 # Ignore sensitive credential files
 credentials.json
 token.json
+token.json.bak
