@@ -48,8 +48,16 @@ class GmailAttachmentDownloader:
             creds = Credentials.from_authorized_user_file(self.token_file, self.SCOPES)
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
-            else:
+                try:
+                    creds.refresh(Request())
+                except Exception:
+                    # Token is invalid (e.g. revoked or expired), delete and re-auth
+                    print("Token invalid or expired. Re-authenticating...")
+                    if os.path.exists(self.token_file):
+                        os.remove(self.token_file)
+                    creds = None
+
+            if not creds:
                 if not os.path.exists(self.credentials_file):
                     raise FileNotFoundError(
                         f"Credentials file '{self.credentials_file}' not found. "
@@ -57,6 +65,7 @@ class GmailAttachmentDownloader:
                     )
                 flow = InstalledAppFlow.from_client_secrets_file(self.credentials_file, self.SCOPES)
                 creds = flow.run_local_server(port=0)
+            
             with open(self.token_file, 'w') as token:
                 token.write(creds.to_json())
         self.gmail_service = build('gmail', 'v1', credentials=creds)
@@ -137,7 +146,7 @@ class GmailAttachmentDownloader:
     def upload_file_to_drive(self, file_data: bytes, filename: str, mimetype: str) -> Optional[str]:
         """Upload a file to Google Drive root, return file ID if successful."""
         try:
-            file_metadata = {'name': filename, 'parents': ["1vrqio1vr_fhsdT7rSMYLcyk_Gv2tplvo"]}
+            file_metadata = {'name': filename, 'parents': ["0ANiWPPimuH4hUk9PVA"]}
             media = MediaIoBaseUpload(io.BytesIO(file_data), mimetype=mimetype, resumable=True)
             file = self.drive_service.files().create(
                 body=file_metadata,
