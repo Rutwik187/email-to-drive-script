@@ -25,7 +25,7 @@ class GmailAttachmentDownloader:
 
     SCOPES = [
         'https://www.googleapis.com/auth/gmail.readonly', 
-        "https://www.googleapis.com/auth/drive.file"
+        "https://www.googleapis.com/auth/drive"
     ]
 
     def __init__(self, credentials_file: str = 'credentials.json', token_file: str = 'token.json'):
@@ -151,7 +151,8 @@ class GmailAttachmentDownloader:
             file = self.drive_service.files().create(
                 body=file_metadata,
                 media_body=media,
-                fields='id'
+                fields='id',
+                supportsAllDrives=True
             ).execute()
             print(f"Uploaded to Drive: {filename} (file id: {file['id']})")
             return file['id']

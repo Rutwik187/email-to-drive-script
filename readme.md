@@ -160,7 +160,7 @@ Each email's attachments are stored in separate folders with:
 - For large downloads, consider running in batches
 - The script handles rate limiting automatically
 
-### 6.3 File Permission Errors
+### 6.3 File permission Errors
 - Ensure write permissions in download folder
 - Run as administrator if needed (Windows)
 
